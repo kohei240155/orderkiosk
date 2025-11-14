@@ -1,5 +1,6 @@
 package com.reza.orderkiosk.model;
 
+import com.reza.orderkiosk.interfaces.TaxCalculator;
 import java.math.BigDecimal;
 import java.util.*;
 
@@ -22,9 +23,42 @@ public class Cart {
         return List.copyOf(lines.values());
     }
 
+    public void clear() {
+        lines.clear();
+    }
+
+    public boolean isEmpty() {
+        return lines.isEmpty();
+    }
+
     public BigDecimal subtotal() {
         return lines.values().stream()
                 .map(CartItem::lineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal();
+    }
+
+    public BigDecimal getTax(TaxCalculator taxCalculator) {
+        if (taxCalculator == null) throw new IllegalArgumentException("taxCalculator required");
+        return taxCalculator.tax(getSubtotal());
+    }
+
+    public BigDecimal getTotal(TaxCalculator taxCalculator) {
+        return getSubtotal().add(getTax(taxCalculator));
+    }
+
+    // NEW: allow updating quantity of existing cart line
+    public void updateQty(MenuItem item, int qty) {
+        if (item == null) throw new IllegalArgumentException("item required");
+        if (!lines.containsKey(item.getName())) {
+            throw new IllegalArgumentException("item not in cart");
+        }
+        lines.computeIfPresent(item.getName(), (k, line) -> {
+            line.setQuantity(qty);
+            return line;
+        });
     }
 }
