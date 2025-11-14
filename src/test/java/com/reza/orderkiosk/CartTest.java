@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class CartTest {
     @Test
     void adds_and_sums() {
-        MenuItem coffee = new MenuItem("Coffee", new BigDecimal("3.00"));
+        MenuItem coffee = new MenuItem("Coffee", new BigDecimal("3.00"), Category.COFFEE);
         Cart c = new Cart();
         c.add(coffee, 2);
         assertEquals(new BigDecimal("6.00"), c.subtotal());
@@ -16,7 +16,7 @@ class CartTest {
 
     @Test
     void merge_same_item() {
-        MenuItem tea = new MenuItem("Tea", new BigDecimal("2.50"));
+        MenuItem tea = new MenuItem("Tea", new BigDecimal("2.50"), Category.COFFEE);
         Cart c = new Cart();
         c.add(tea, 1);
         c.add(tea, 2);
