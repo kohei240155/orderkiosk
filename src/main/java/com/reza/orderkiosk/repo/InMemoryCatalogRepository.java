@@ -7,8 +7,8 @@ import java.util.List;
 
 public class InMemoryCatalogRepository implements CatalogRepository {
     private final List<MenuItem> data = List.of(
-        new MenuItem("Americano", new BigDecimal("3.50"), Category.COFFEE),
-        new MenuItem("Latte", new BigDecimal("4.20"), Category.COFFEE),
+        new MenuItem("Americano", new BigDecimal("3.50"), Category.DRINK),
+        new MenuItem("Latte", new BigDecimal("4.20"), Category.DRINK),
         new MenuItem("Croissant", new BigDecimal("4.25"), Category.BAKERY)
     );
 

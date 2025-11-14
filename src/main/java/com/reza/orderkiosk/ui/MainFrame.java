@@ -1,15 +1,31 @@
 package com.reza.orderkiosk.ui;
 
+import com.reza.orderkiosk.interfaces.CatalogRepository;
+import com.reza.orderkiosk.interfaces.TaxCalculator;
+import com.reza.orderkiosk.model.Cart;
+import com.reza.orderkiosk.model.Category;
+import com.reza.orderkiosk.model.FlatRateTaxCalculator;
+import com.reza.orderkiosk.model.MenuItem;
+import com.reza.orderkiosk.repo.InMemoryCatalogRepository;
+
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.event.ListSelectionEvent;
 import java.awt.*;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class MainFrame extends JFrame {
-    private JList<String> itemsList;
-    private DefaultListModel<String> itemsModel;
+    private final CatalogRepository catalogRepo = new InMemoryCatalogRepository();
+    private final Cart cart = new Cart();
+    private final TaxCalculator taxCalc = new FlatRateTaxCalculator(new BigDecimal("0.06"));
+
+    private JList<MenuItem> itemsList;
+    private DefaultListModel<MenuItem> itemsModel;
     private JSpinner qtySpinner;
     private JButton addBtn;
     private JTable cartTable;
+    private CartTableModel cartTableModel;
     private JLabel subtotalLbl;
     private JLabel taxLbl;
     private JLabel totalLbl;
@@ -25,6 +41,9 @@ public class MainFrame extends JFrame {
         add(buildCenterPanel(), BorderLayout.CENTER);
         add(buildRightPanel(), BorderLayout.EAST);
         add(buildBottomBar(), BorderLayout.SOUTH);
+
+        loadItems(Category.DRINK);
+        updateTotals();
     }
 
     private JComponent buildLeftPanel() {
@@ -33,7 +52,9 @@ public class MainFrame extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 0));
 
         var drinksBtn = new JButton("Drinks");
+        drinksBtn.addActionListener(e -> loadItems(Category.DRINK));
         var bakeryBtn = new JButton("Bakery");
+        bakeryBtn.addActionListener(e -> loadItems(Category.BAKERY));
 
         panel.add(new JLabel("Categories"));
         panel.add(Box.createVerticalStrut(10));
@@ -52,10 +73,19 @@ public class MainFrame extends JFrame {
         root.add(new JLabel("Items"), BorderLayout.NORTH);
 
         itemsModel = new DefaultListModel<>();
-        itemsModel.addElement("Coffee - 3.00");
-        itemsModel.addElement("Tea - 2.50");
         itemsList = new JList<>(itemsModel);
         itemsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        itemsList.addListSelectionListener(e -> onItemSelected(e));
+        itemsList.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                var c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof MenuItem mi) {
+                    setText(mi.getName() + " — " + mi.getPrice().toPlainString());
+                }
+                return c;
+            }
+        });
 
         root.add(new JScrollPane(itemsList), BorderLayout.CENTER);
 
@@ -65,6 +95,7 @@ public class MainFrame extends JFrame {
         foot.add(qtySpinner);
 
         addBtn = new JButton("Add to Cart");
+        addBtn.addActionListener(e -> addSelectedToCart());
         addBtn.setEnabled(false);
         foot.add(addBtn);
 
@@ -77,16 +108,25 @@ public class MainFrame extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 10));
         panel.add(new JLabel("Cart"), BorderLayout.NORTH);
 
-        cartTable = new JTable(new DefaultTableModel(
-                new Object[][]{},
-                new String[]{"Item", "Qty", "Price", "Line Total"}
-        ));
+        cartTableModel = new CartTableModel(cart);
+        cartTable = new JTable(cartTableModel);
         cartTable.setFillsViewportHeight(true);
+        cartTableModel.addTableModelListener(e -> updateTotals());
+
         panel.add(new JScrollPane(cartTable), BorderLayout.CENTER);
 
         var btns = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btns.add(new JButton("Remove"));
-        btns.add(new JButton("Clear"));
+        var removeBtn = new JButton("Remove");
+        removeBtn.addActionListener(e -> removeSelectedCartLine());
+        var clearBtn = new JButton("Clear");
+        clearBtn.addActionListener(e -> {
+            cart.clear();
+            cartTableModel.refresh();
+            updateTotals();
+        });
+
+        btns.add(removeBtn);
+        btns.add(clearBtn);
         panel.add(btns, BorderLayout.SOUTH);
 
         panel.setPreferredSize(new Dimension(420, 10));
@@ -100,6 +140,7 @@ public class MainFrame extends JFrame {
         totalLbl = new JLabel("Total: 0.00");
 
         var checkoutBtn = new JButton("Checkout…");
+        // wire in Week 10
 
         panel.add(subtotalLbl);
         panel.add(new JLabel("   "));
@@ -109,5 +150,58 @@ public class MainFrame extends JFrame {
         panel.add(new JLabel("   "));
         panel.add(checkoutBtn);
         return panel;
+    }
+
+    private void onItemSelected(ListSelectionEvent e) {
+        if (!e.getValueIsAdjusting()) {
+            var selected = itemsList.getSelectedValue();
+            addBtn.setEnabled(selected != null);
+            if (selected != null) {
+                qtySpinner.setValue(1);
+            }
+        }
+    }
+
+    private void addSelectedToCart() {
+        var item = itemsList.getSelectedValue();
+        if (item == null) return;
+        int qty = (int) qtySpinner.getValue();
+        try {
+            cart.add(item, qty);
+            cartTableModel.refresh();
+            updateTotals();
+            qtySpinner.setValue(1);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Invalid quantity", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void removeSelectedCartLine() {
+        int row = cartTable.getSelectedRow();
+        if (row < 0) return;
+        var item = cartTableModel.getItemAt(row);
+        cart.remove(item.getName());
+        cartTableModel.refresh();
+        updateTotals();
+    }
+
+    private void loadItems(Category category) {
+        List<MenuItem> all = catalogRepo.all();
+        var list = all.stream().filter(m -> m.getCategory() == category).collect(Collectors.toList());
+
+        itemsModel.clear();
+        for (var m : list) itemsModel.addElement(m);
+
+        addBtn.setEnabled(false);
+    }
+
+    private void updateTotals() {
+        var sub = cart.getSubtotal();
+        var tax = cart.getTax(taxCalc);
+        var tot = cart.getTotal(taxCalc);
+
+        subtotalLbl.setText("Subtotal: " + sub.toPlainString());
+        taxLbl.setText("Tax: " + tax.toPlainString());
+        totalLbl.setText("Total: " + tot.toPlainString());
     }
 }

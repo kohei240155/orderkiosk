@@ -9,7 +9,7 @@ class CategoryTests {
   @Test
   void filters_by_category_counts() {
     var repo = new InMemoryCatalogRepository();
-    assertEquals(2, repo.byCategory(Category.COFFEE).size());
+    assertEquals(2, repo.byCategory(Category.DRINK).size());
     assertEquals(1, repo.byCategory(Category.BAKERY).size());
   }
 }
