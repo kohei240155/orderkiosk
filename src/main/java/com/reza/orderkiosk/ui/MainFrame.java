@@ -63,12 +63,16 @@ public class MainFrame extends JFrame {
         drinksBtn.addActionListener(e -> loadItems(Category.DRINK));
         var bakeryBtn = new JButton("Bakery");
         bakeryBtn.addActionListener(e -> loadItems(Category.BAKERY));
+        var snacksBtn = new JButton("Snacks");
+        snacksBtn.addActionListener(e -> loadItems(Category.SNACK));
 
         panel.add(new JLabel("Categories"));
         panel.add(Box.createVerticalStrut(10));
         panel.add(drinksBtn);
         panel.add(Box.createVerticalStrut(5));
         panel.add(bakeryBtn);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(snacksBtn);
 
         panel.setPreferredSize(new Dimension(180, 10));
         return panel;

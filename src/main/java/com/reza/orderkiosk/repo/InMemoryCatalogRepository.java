@@ -9,7 +9,10 @@ public class InMemoryCatalogRepository implements CatalogRepository {
     private final List<MenuItem> data = List.of(
         new MenuItem("Americano", new BigDecimal("3.50"), Category.DRINK),
         new MenuItem("Latte", new BigDecimal("4.20"), Category.DRINK),
-        new MenuItem("Croissant", new BigDecimal("4.25"), Category.BAKERY)
+        new MenuItem("Croissant", new BigDecimal("4.25"), Category.BAKERY),
+        new MenuItem("Chips", new BigDecimal("2.50"), Category.SNACK),
+        new MenuItem("Cookies", new BigDecimal("3.00"), Category.SNACK),
+        new MenuItem("Granola Bar", new BigDecimal("2.00"), Category.SNACK)
     );
 
     @Override
