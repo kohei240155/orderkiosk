@@ -5,10 +5,22 @@ import java.math.BigDecimal;
 import java.util.*;
 
 public class Cart {
+    private static final int MAX_QUANTITY_PER_ITEM = 10;
     private final Map<String, CartItem> lines = new LinkedHashMap<>();
 
     public void add(MenuItem item, int qty) {
         if (qty <= 0) throw new IllegalArgumentException("qty must be positive");
+        
+        // Check if adding this quantity would exceed the maximum
+        int currentQty = lines.containsKey(item.getName()) 
+            ? lines.get(item.getName()).getQuantity() 
+            : 0;
+        int totalQty = currentQty + qty;
+        
+        if (totalQty > MAX_QUANTITY_PER_ITEM) {
+            throw new IllegalArgumentException("Cannot add more than 10 units of the same item");
+        }
+        
         lines.merge(item.getName(), new CartItem(item, qty), (oldLine, newLine) -> {
             oldLine.setQuantity(oldLine.getQuantity() + qty);
             return oldLine;
