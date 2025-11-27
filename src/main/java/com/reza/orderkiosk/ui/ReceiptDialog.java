@@ -4,10 +4,9 @@ import com.reza.orderkiosk.model.Order;
 
 import javax.swing.*;
 import java.awt.*;
-import java.nio.file.Path;
 
 public class ReceiptDialog extends JDialog {
-    public ReceiptDialog(Window owner, Order order, Path savedFile) {
+    public ReceiptDialog(Window owner, Order order, long receiptId) {
         super(owner, "Receipt", ModalityType.APPLICATION_MODAL);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(520, 420);
@@ -22,9 +21,7 @@ public class ReceiptDialog extends JDialog {
         closeBtn.addActionListener(e -> dispose());
 
         var south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        if (savedFile != null) {
-            south.add(new JLabel("Saved to: " + savedFile.toAbsolutePath()));
-        }
+        south.add(new JLabel("Receipt ID: " + receiptId));
         south.add(closeBtn);
 
         getContentPane().setLayout(new BorderLayout(8, 8));

@@ -7,13 +7,12 @@ import com.reza.orderkiosk.model.Category;
 import com.reza.orderkiosk.model.FlatRateTaxCalculator;
 import com.reza.orderkiosk.model.MenuItem;
 import com.reza.orderkiosk.model.Order;
-import com.reza.orderkiosk.repo.FileReceiptRepository;
+import com.reza.orderkiosk.repo.SqliteReceiptRepository;
 import com.reza.orderkiosk.repo.InMemoryCatalogRepository;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import java.awt.*;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,7 +26,7 @@ public class MainFrame extends JFrame {
     private final CatalogRepository catalogRepo = new InMemoryCatalogRepository();
     private final Cart cart = new Cart();
     private final TaxCalculator taxCalc = new FlatRateTaxCalculator(new BigDecimal("0.06"));
-    private final FileReceiptRepository receiptRepository = new FileReceiptRepository(defaultReceiptDir());
+    private final SqliteReceiptRepository receiptRepository = new SqliteReceiptRepository(defaultReceiptDbPath());
 
     private JList<MenuItem> itemsList;
     private DefaultListModel<MenuItem> itemsModel;
@@ -230,13 +229,22 @@ public class MainFrame extends JFrame {
 
         Order order = buildOrderSnapshot(name);
         String receiptText = ReceiptFormatter.format(order);
-        var receiptLines = receiptText.lines().toList();
         boolean receiptShown = false;
         try {
-            var file = receiptRepository.save(receiptLines);
-            new ReceiptDialog(this, order, file).setVisible(true);
+            var subtotal = cart.getSubtotal().toPlainString();
+            var tax = cart.getTax(taxCalc).toPlainString();
+            var total = cart.getTotal(taxCalc).toPlainString();
+            
+            long receiptId = receiptRepository.save(name, subtotal, tax, total, receiptText);
+            
+            JOptionPane.showMessageDialog(this, 
+                "Receipt saved with ID: " + receiptId,
+                "Checkout Complete", 
+                JOptionPane.INFORMATION_MESSAGE);
+            
+            new ReceiptDialog(this, order, receiptId).setVisible(true);
             receiptShown = true;
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Failed to save receipt: " + ex.getMessage(),
                     "Receipt Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -266,7 +274,7 @@ public class MainFrame extends JFrame {
         );
     }
 
-    private static Path defaultReceiptDir() {
-        return Paths.get(System.getProperty("user.home"), "kiosk-receipts");
+    private static Path defaultReceiptDbPath() {
+        return Paths.get(System.getProperty("user.home"), "kiosk-receipts", "receipts.db");
     }
 }
